@@ -53,12 +53,57 @@ def preprocess():
     mat = loadmat('mnist_all.mat')  # loads the MAT object as a Dictionary
 
     # Split the training sets into two sets of 50000 randomly sampled training examples and 10000 validation examples. 
-    # Your code here.
+    # set random seed
+    np.random.seed(100)
+    test_key_label = "test"
+    train_key_label = "train"
+    test_data = []
+    test_label = []
+    train_data = []
+    train_label = []
+    # load dataset
+    for i in range(10):
+        # load test data, test label
+        test_key = test_key_label + str(i)
+        test_val = mat[test_key]
+        test_label.extend([i]*test_val.shape[0])
+        test_data.extend(test_val)
     
+        # load train data, train label
+        train_key = train_key_label + str(i)
+        train_val = mat[train_key]
+        train_label.extend([i]*train_val.shape[0])
+        train_data.extend(train_val)
 
+
+    # convert list to np arrays
+    test_data = np.asarray(test_data)
+    test_label = np.asarray(test_label)
+    
+    train_data = np.asarray(train_data)
+    train_label = np.asarray(train_label)
+    
+    
+    # shuffle the array in the same order
+    test_randomize = np.arange(len(test_label))
+    np.random.shuffle(test_randomize)
+    test_label = test_label[test_randomize]
+    test_data = test_data[test_randomize]
+    
+    train_randomize = np.arange(len(train_label))
+    np.random.shuffle(train_randomize)
+    train_label = train_label[train_randomize]
+    train_data = train_data[train_randomize]
+    
+    # divide training dataset into 5:1 set for validation
+    partition = int((5/6)*len(train_label))
+    validation_data = train_data[partition:]
+    validation_label = train_label[partition:]
+    train_data = train_data[:partition]
+    train_label = train_label[:partition]
     # Feature selection
     # Your code here.
-
+    
     print('preprocess done')
 
     return train_data, train_label, validation_data, validation_label, test_data, test_label
