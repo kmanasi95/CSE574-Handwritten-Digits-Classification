@@ -154,13 +154,38 @@ def nnObjFunction(params, *args):
     obj_val = 0
 
     # Your code here
-    #
-    #
-    #
-    #
-    #
-
-
+    m = training_data.shape[0] # number of training data
+    
+    # one k hot encoding
+    y = np.zeros((m, 10))
+    for i in range(m):
+        y[i,training_label[i]] = 1
+        
+    X = training_data # 50000 x 785
+    
+    # add bias in X (consider it as a1)
+    a1 = np.hstack((np.ones(m).reshape(m, 1), X)) # 50000 x 785    
+    
+    # hidden layer propogation (use w1)
+    z2 = np.dot(a1, w1.T) # 50000 x 50
+    a2 = sigmoid(z2) # 50000 x 50
+    
+    # add bias in a2
+    a2 = np.hstack((np.ones(m).reshape(m, 1), a2)) # 50000 x 51
+    
+    # output layer propogation (use w2)
+    z3 = np.dot(a2, w2.T) # 50000 x 10
+    a3 = sigmoid(z3) # 50000 x 10
+    
+    # feed forward completed.
+    
+    t1 = w1[:,1:] # 50 x 784
+    t2 = w2[:,1:] # 10 x 50
+    
+    # regularization parameter
+    reg = (lambdaval/(2*m))*np.asscalar(np.sum(np.square(t1)) + np.sum(np.square(t2)))
+    # cost function for sigmoid function with regularization
+    obj_val = (-1/m) * (np.sum(y*np.log(a3)) + np.sum((1-y)*np.log(1-a3))) + reg
 
     # Make sure you reshape the gradient matrices to a 1D array. for instance if your gradient matrices are grad_w1 and grad_w2
     # you would use code similar to the one below to create a flat array
