@@ -3,6 +3,7 @@ from scipy.optimize import minimize
 from scipy.io import loadmat
 from math import sqrt
 import matplotlib.pyplot as plt
+import pickle
 
 
 def initializeWeights(n_in, n_out):
@@ -102,12 +103,21 @@ def preprocess():
     validation_label = train_label[partition:]
     train_data = train_data[:partition]
     train_label = train_label[:partition]
+    
     # Feature selection
     # Your code here.
+    similar_features = np.all(train_data == train_data[0,:], axis = 0)
+    train_data = np.delete(train_data, np.where(similar_features == True), axis = 1)
+    validation_data = np.delete(validation_data, np.where(similar_features == True), axis = 1)
+    test_data = np.delete(test_data, np.where(similar_features == True), axis = 1)
+    
+    selected_features = np.array([])
+    selected_features = np.where(similar_features == False)[0]
+    #print(selected_features)
     
     print('preprocess done')
 
-    return train_data, train_label, validation_data, validation_label, test_data, test_label
+    return train_data, train_label, validation_data, validation_label, test_data, test_label, selected_features
 
 
 def nnObjFunction(params, *args):
@@ -259,7 +269,7 @@ def nnPredict(w1, w2, data):
 
 """**************Neural Network Script Starts here********************************"""
 
-train_data, train_label, validation_data, validation_label, test_data, test_label = preprocess()
+train_data, train_label, validation_data, validation_label, test_data, test_label, selected_features = preprocess()
 
 #  Train Neural Network
 
@@ -280,7 +290,7 @@ initial_w2 = initializeWeights(n_hidden, n_class)
 initialWeights = np.concatenate((initial_w1.flatten(), initial_w2.flatten()), 0)
 
 # set the regularization hyper-parameter
-lambdaval = 20
+lambdaval = 0.1
 
 args = (n_input, n_hidden, n_class, train_data, train_label, lambdaval)
 
@@ -318,3 +328,11 @@ predicted_label = nnPredict(w1, w2, test_data)
 # find the accuracy on Validation Dataset
 
 print('\n Test set Accuracy:' + str(100 * np.mean((predicted_label == test_label).astype(float))) + '%')
+
+#Create .pickle file with selected features
+features = [selected_features, n_hidden, w1, w2, lambdaval]
+#print(a)
+pickle.dump(features, open( "params.pickle", "wb" ) )
+
+#data = pickle.load( open( "params.pickle", "rb" ) )
+#print(data)
