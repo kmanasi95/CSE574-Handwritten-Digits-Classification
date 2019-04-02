@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.io import loadmat
 from math import sqrt
+import matplotlib.pyplot as plt
 
 
 def initializeWeights(n_in, n_out):
@@ -164,16 +165,18 @@ def nnObjFunction(params, *args):
     X = training_data # 50000 x 785
     
     # add bias in X (consider it as a1)
-    a1 = np.hstack((np.ones(m).reshape(m, 1), X)) # 50000 x 785    
+    #a1 = np.hstack((np.ones(m).reshape(m, 1), X)) # 50000 x 785 
+    a1 = np.column_stack([X, np.ones((m,1),dtype = np.uint8)])
     
-    # hidden layer propogation (use w1)
+    # hidden layer propagation (use w1)
     z2 = np.dot(a1, w1.T) # 50000 x 50
     a2 = sigmoid(z2) # 50000 x 50
     
     # add bias in a2
-    a2 = np.hstack((np.ones(m).reshape(m, 1), a2)) # 50000 x 51
+    #a2 = np.hstack((np.ones(m).reshape(m, 1), a2)) # 50000 x 51
+    a2 = np.column_stack([a2, np.ones((m,1),dtype = np.uint8)])
     
-    # output layer propogation (use w2)
+    # output layer propagation (use w2)
     z3 = np.dot(a2, w2.T) # 50000 x 10
     a3 = sigmoid(z3) # 50000 x 10
     
@@ -182,18 +185,38 @@ def nnObjFunction(params, *args):
     t1 = w1[:,1:] # 50 x 784
     t2 = w2[:,1:] # 10 x 50
     
+    #Start back propagation
+    
+    #Gradient Descent
+    #Derivative of error function wrt weight from input feature to hidden unit
+    dl = a3 - y
+    dl_w = np.dot(dl,w2)
+    z_prod = (1 - a2) * a2
+    final_prod = dl_w * z_prod
+    grad_w1 = np.dot(final_prod.T, a1)
+    grad_w1 = grad_w1[0:n_hidden,:]
+    #Derivative of error function wrt weight from hidden unit to output unit
+    grad_w2 = np.dot(dl.T, a2)
+    
+    #End back propagation
+    
     # regularization parameter
     reg = (lambdaval/(2*m))*np.asscalar(np.sum(np.square(t1)) + np.sum(np.square(t2)))
     # cost function for sigmoid function with regularization
     obj_val = (-1/m) * (np.sum(y*np.log(a3)) + np.sum((1-y)*np.log(1-a3))) + reg
-
+    
+    #New objective function wrt weight from input layer to hidden layer
+    grad_w1 = (np.dot(lambdaval,w1) + grad_w1) / m
+    #New objective function wrt weight from hidden layer to output layer
+    grad_w2 = (np.dot(lambdaval,w2) + grad_w2) / m
+    
     # Make sure you reshape the gradient matrices to a 1D array. for instance if your gradient matrices are grad_w1 and grad_w2
     # you would use code similar to the one below to create a flat array
-    # obj_grad = np.concatenate((grad_w1.flatten(), grad_w2.flatten()),0)
-    obj_grad = np.array([])
+    obj_grad = np.concatenate((grad_w1.flatten(), grad_w2.flatten()),0)
+    #obj_grad = np.array([])
 
     return (obj_val, obj_grad)
-
+    
 
 def nnPredict(w1, w2, data):
     """% nnPredict predicts the label of data given the parameter w1, w2 of Neural
@@ -214,9 +237,25 @@ def nnPredict(w1, w2, data):
 
     labels = np.array([])
     # Your code here
-
+    m = data.shape[0] # number of training data
+    
+    # add bias in X (consider it as a1)
+    a1 = np.column_stack([data, np.ones((m,1),dtype = np.uint8)])
+    
+    # hidden layer propagation (use w1)
+    z2 = np.dot(a1, w1.transpose()) # 50000 x 50
+    a2 = sigmoid(z2) # 50000 x 50
+    
+    # add bias in a2
+    a2 = np.column_stack([a2, np.ones((m,1), dtype = np.uint8)])
+    
+    # output layer propagation (use w2)
+    z3 = np.dot(a2, w2.transpose()) # 50000 x 10
+    a3 = sigmoid(z3) # 50000 x 10
+    
+    labels = np.argmax(a3, axis = 1)
+    
     return labels
-
 
 """**************Neural Network Script Starts here********************************"""
 
@@ -241,7 +280,7 @@ initial_w2 = initializeWeights(n_hidden, n_class)
 initialWeights = np.concatenate((initial_w1.flatten(), initial_w2.flatten()), 0)
 
 # set the regularization hyper-parameter
-lambdaval = 0
+lambdaval = 20
 
 args = (n_input, n_hidden, n_class, train_data, train_label, lambdaval)
 
