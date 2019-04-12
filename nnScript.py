@@ -2,9 +2,8 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.io import loadmat
 from math import sqrt
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import pickle
-
 
 def initializeWeights(n_in, n_out):
     """
@@ -56,6 +55,7 @@ def preprocess():
 
     # Split the training sets into two sets of 50000 randomly sampled training examples and 10000 validation examples. 
     # set random seed
+    
     np.random.seed(100)
     test_key_label = "test"
     train_key_label = "train"
@@ -103,6 +103,8 @@ def preprocess():
     validation_label = train_label[partition:]
     train_data = train_data[:partition]
     train_label = train_label[:partition]
+    
+    #print(train_data)
     
     # Feature selection
     # Your code here.
@@ -162,6 +164,7 @@ def nnObjFunction(params, *args):
 
     w1 = params[0:n_hidden * (n_input + 1)].reshape((n_hidden, (n_input + 1)))
     w2 = params[(n_hidden * (n_input + 1)):].reshape((n_class, (n_hidden + 1)))
+    
     obj_val = 0
 
     # Your code here
@@ -173,56 +176,72 @@ def nnObjFunction(params, *args):
         y[i,training_label[i]] = 1
         
     X = training_data # 50000 x 785
+    #print(X.shape)
+    a1 = X
     
     # add bias in X (consider it as a1)
     #a1 = np.hstack((np.ones(m).reshape(m, 1), X)) # 50000 x 785 
-    a1 = np.column_stack([X, np.ones((m,1),dtype = np.uint8)])
+    a1_bias = np.column_stack([X, np.ones((m,1),dtype = np.uint8)])
     
     # hidden layer propagation (use w1)
-    z2 = np.dot(a1, w1.T) # 50000 x 50
+    z2 = np.dot(a1_bias, w1.T) # 50000 x 50
     a2 = sigmoid(z2) # 50000 x 50
     
     # add bias in a2
     #a2 = np.hstack((np.ones(m).reshape(m, 1), a2)) # 50000 x 51
-    a2 = np.column_stack([a2, np.ones((m,1),dtype = np.uint8)])
+    a2_bias = np.column_stack([a2, np.ones((m,1),dtype = np.uint8)])
     
     # output layer propagation (use w2)
-    z3 = np.dot(a2, w2.T) # 50000 x 10
+    z3 = np.dot(a2_bias, w2.T) # 50000 x 10
     a3 = sigmoid(z3) # 50000 x 10
     
     # feed forward completed.
     
-    t1 = w1[:,1:] # 50 x 784
-    t2 = w2[:,1:] # 10 x 50
+    t1 = w1[:,:-1] # 50 x 784
+    t2 = w2[:,:-1] # 10 x 50
+    
+    #print(t1.shape, t2.shape)
     
     #Start back propagation
     
     #Gradient Descent
     #Derivative of error function wrt weight from input feature to hidden unit
-    dl = a3 - y
+    '''dl = a3 - y
     dl_w = np.dot(dl,w2)
     z_prod = (1 - a2) * a2
     final_prod = dl_w * z_prod
     grad_w1 = np.dot(final_prod.T, a1)
     grad_w1 = grad_w1[0:n_hidden,:]
     #Derivative of error function wrt weight from hidden unit to output unit
-    grad_w2 = np.dot(dl.T, a2)
+    grad_w2 = np.dot(dl.T, a2)'''
+    
+    
+    dl = (y-a3) * a3 * (1-a3) #50000*10
+    grad_w2 = np.dot(dl.T, a2_bias) #10*51
+    
+    out = (1-a2) * a2 # (50000 X 50)
+    grad_w1_temp = ((np.dot(dl, t2)) * out).T # 50 * 50000
+    grad_w1 = np.dot(grad_w1_temp, a1_bias) # 50 * 786
+    
     
     #End back propagation
     
     # regularization parameter
     reg = (lambdaval/(2*m))*np.asscalar(np.sum(np.square(t1)) + np.sum(np.square(t2)))
+    #print(reg)
     # cost function for sigmoid function with regularization
     obj_val = (-1/m) * (np.sum(y*np.log(a3)) + np.sum((1-y)*np.log(1-a3))) + reg
+    #print(obj_val)
     
     #New objective function wrt weight from input layer to hidden layer
-    grad_w1 = (np.dot(lambdaval,w1) + grad_w1) / m
+    grad_w1 = (-1 * ((lambdaval * w1) + grad_w1)) / m   # (50, 716) (50, 715)
     #New objective function wrt weight from hidden layer to output layer
-    grad_w2 = (np.dot(lambdaval,w2) + grad_w2) / m
+    grad_w2 = (-1 * ((lambdaval*w2) + grad_w2)) / m
     
     # Make sure you reshape the gradient matrices to a 1D array. for instance if your gradient matrices are grad_w1 and grad_w2
     # you would use code similar to the one below to create a flat array
     obj_grad = np.concatenate((grad_w1.flatten(), grad_w2.flatten()),0)
+    
     #obj_grad = np.array([])
 
     return (obj_val, obj_grad)
@@ -253,17 +272,18 @@ def nnPredict(w1, w2, data):
     a1 = np.column_stack([data, np.ones((m,1),dtype = np.uint8)])
     
     # hidden layer propagation (use w1)
-    z2 = np.dot(a1, w1.transpose()) # 50000 x 50
+    z2 = np.dot(a1, w1.T) # 50000 x 50
     a2 = sigmoid(z2) # 50000 x 50
     
     # add bias in a2
     a2 = np.column_stack([a2, np.ones((m,1), dtype = np.uint8)])
     
     # output layer propagation (use w2)
-    z3 = np.dot(a2, w2.transpose()) # 50000 x 10
+    z3 = np.dot(a2, w2.T) # 50000 x 10
     a3 = sigmoid(z3) # 50000 x 10
     
     labels = np.argmax(a3, axis = 1)
+    print(labels)
     
     return labels
 
@@ -290,7 +310,7 @@ initial_w2 = initializeWeights(n_hidden, n_class)
 initialWeights = np.concatenate((initial_w1.flatten(), initial_w2.flatten()), 0)
 
 # set the regularization hyper-parameter
-lambdaval = 0.1
+lambdaval = 0
 
 args = (n_input, n_hidden, n_class, train_data, train_label, lambdaval)
 
